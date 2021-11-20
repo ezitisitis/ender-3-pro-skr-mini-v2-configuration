@@ -48,7 +48,7 @@ void GcodeSuite::M906() {
 
   bool report = true;
 
-  #if AXIS_IS_TMC(X) || AXIS_IS_TMC(X2) || AXIS_IS_TMC(Y) || AXIS_IS_TMC(Y2) || AXIS_IS_TMC(Z) || AXIS_IS_TMC(Z2) || AXIS_IS_TMC(Z3) || AXIS_IS_TMC(Z4)
+  #if AXIS_IS_TMC(X) || AXIS_IS_TMC(X2) || AXIS_IS_TMC(Y) || AXIS_IS_TMC(Y2) || AXIS_IS_TMC(Z) || AXIS_IS_TMC(Z2) || AXIS_IS_TMC(Z3) || AXIS_IS_TMC(Z4) || AXIS_IS_TMC(I) || AXIS_IS_TMC(J) || AXIS_IS_TMC(K)
     const uint8_t index = parser.byteval('I');
   #endif
 
@@ -64,7 +64,7 @@ void GcodeSuite::M906() {
         #endif
         break;
 
-      #if LINEAR_AXES >= XY
+      #if HAS_Y_AXIS
         case Y_AXIS:
           #if AXIS_IS_TMC(Y)
             if (index == 0) TMC_SET_CURRENT(Y);
@@ -92,11 +92,21 @@ void GcodeSuite::M906() {
           break;
       #endif
 
-      #if HAS_EXTRUDERS
+      #if AXIS_IS_TMC(I)
+        case I_AXIS: TMC_SET_CURRENT(I); break;
+      #endif
+      #if AXIS_IS_TMC(J)
+        case J_AXIS: TMC_SET_CURRENT(J); break;
+      #endif
+      #if AXIS_IS_TMC(K)
+        case K_AXIS: TMC_SET_CURRENT(K); break;
+      #endif
+
+      #if E_STEPPERS
         case E_AXIS: {
-          const int8_t target_extruder = get_target_extruder_from_command();
-          if (target_extruder < 0) return;
-          switch (target_extruder) {
+          const int8_t target_e_stepper = get_target_e_stepper_from_command(0);
+          if (target_e_stepper < 0) return;
+          switch (target_e_stepper) {
             #if AXIS_IS_TMC(E0)
               case 0: TMC_SET_CURRENT(E0); break;
             #endif
@@ -152,6 +162,15 @@ void GcodeSuite::M906() {
     #if AXIS_IS_TMC(Z4)
       TMC_SAY_CURRENT(Z4);
     #endif
+    #if AXIS_IS_TMC(I)
+      TMC_SAY_CURRENT(I);
+    #endif
+    #if AXIS_IS_TMC(J)
+      TMC_SAY_CURRENT(J);
+    #endif
+    #if AXIS_IS_TMC(K)
+      TMC_SAY_CURRENT(K);
+    #endif
     #if AXIS_IS_TMC(E0)
       TMC_SAY_CURRENT(E0);
     #endif
@@ -177,6 +196,97 @@ void GcodeSuite::M906() {
       TMC_SAY_CURRENT(E7);
     #endif
   }
+}
+
+void GcodeSuite::M906_report(const bool forReplay/*=true*/) {
+  report_heading(forReplay, PSTR(STR_STEPPER_DRIVER_CURRENT));
+
+  auto say_M906 = [](const bool forReplay) {
+    report_echo_start(forReplay);
+    SERIAL_ECHOPGM("  M906");
+  };
+
+  #if  AXIS_IS_TMC(X) || AXIS_IS_TMC(Y) || AXIS_IS_TMC(Z) \
+    || AXIS_IS_TMC(I) || AXIS_IS_TMC(J) || AXIS_IS_TMC(K)
+    say_M906(forReplay);
+    #if AXIS_IS_TMC(X)
+      SERIAL_ECHOPGM_P(SP_X_STR, stepperX.getMilliamps());
+    #endif
+    #if AXIS_IS_TMC(Y)
+      SERIAL_ECHOPGM_P(SP_Y_STR, stepperY.getMilliamps());
+    #endif
+    #if AXIS_IS_TMC(Z)
+      SERIAL_ECHOPGM_P(SP_Z_STR, stepperZ.getMilliamps());
+    #endif
+    #if AXIS_IS_TMC(I)
+      SERIAL_ECHOPGM_P(SP_I_STR, stepperI.getMilliamps());
+    #endif
+    #if AXIS_IS_TMC(J)
+      SERIAL_ECHOPGM_P(SP_J_STR, stepperJ.getMilliamps());
+    #endif
+    #if AXIS_IS_TMC(K)
+      SERIAL_ECHOPGM_P(SP_K_STR, stepperK.getMilliamps());
+    #endif
+    SERIAL_EOL();
+  #endif
+
+  #if AXIS_IS_TMC(X2) || AXIS_IS_TMC(Y2) || AXIS_IS_TMC(Z2)
+    say_M906(forReplay);
+    SERIAL_ECHOPGM(" I1");
+    #if AXIS_IS_TMC(X2)
+      SERIAL_ECHOPGM_P(SP_X_STR, stepperX2.getMilliamps());
+    #endif
+    #if AXIS_IS_TMC(Y2)
+      SERIAL_ECHOPGM_P(SP_Y_STR, stepperY2.getMilliamps());
+    #endif
+    #if AXIS_IS_TMC(Z2)
+      SERIAL_ECHOPGM_P(SP_Z_STR, stepperZ2.getMilliamps());
+    #endif
+    SERIAL_EOL();
+  #endif
+
+  #if AXIS_IS_TMC(Z3)
+    say_M906(forReplay);
+    SERIAL_ECHOLNPGM(" I2 Z", stepperZ3.getMilliamps());
+  #endif
+  #if AXIS_IS_TMC(Z4)
+    say_M906(forReplay);
+    SERIAL_ECHOLNPGM(" I3 Z", stepperZ4.getMilliamps());
+  #endif
+
+  #if AXIS_IS_TMC(E0)
+    say_M906(forReplay);
+    SERIAL_ECHOLNPGM(" T0 E", stepperE0.getMilliamps());
+  #endif
+  #if AXIS_IS_TMC(E1)
+    say_M906(forReplay);
+    SERIAL_ECHOLNPGM(" T1 E", stepperE1.getMilliamps());
+  #endif
+  #if AXIS_IS_TMC(E2)
+    say_M906(forReplay);
+    SERIAL_ECHOLNPGM(" T2 E", stepperE2.getMilliamps());
+  #endif
+  #if AXIS_IS_TMC(E3)
+    say_M906(forReplay);
+    SERIAL_ECHOLNPGM(" T3 E", stepperE3.getMilliamps());
+  #endif
+  #if AXIS_IS_TMC(E4)
+    say_M906(forReplay);
+    SERIAL_ECHOLNPGM(" T4 E", stepperE4.getMilliamps());
+  #endif
+  #if AXIS_IS_TMC(E5)
+    say_M906(forReplay);
+    SERIAL_ECHOLNPGM(" T5 E", stepperE5.getMilliamps());
+  #endif
+  #if AXIS_IS_TMC(E6)
+    say_M906(forReplay);
+    SERIAL_ECHOLNPGM(" T6 E", stepperE6.getMilliamps());
+  #endif
+  #if AXIS_IS_TMC(E7)
+    say_M906(forReplay);
+    SERIAL_ECHOLNPGM(" T7 E", stepperE7.getMilliamps());
+  #endif
+  SERIAL_EOL();
 }
 
 #endif // HAS_TRINAMIC_CONFIG
